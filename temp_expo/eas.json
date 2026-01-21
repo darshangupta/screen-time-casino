@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 3.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "bundleIdentifier": "com.screentimecasino.app.dev"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "bundleIdentifier": "com.screentimecasino.app"
+      }
+    },
+    "production": {
+      "ios": {
+        "bundleIdentifier": "com.screentimecasino.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
