@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -98,7 +98,24 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated } = useSelector((state: RootState) => state.user);
+  // Defensive selector with type checking and debugging
+  const userState = useSelector((state: RootState) => state.user);
+  const isAuthenticated = useMemo(() => {
+    console.log('🔍 SELECTOR DEBUG:', {
+      userState: userState,
+      isAuthenticated: userState.isAuthenticated,
+      type: typeof userState.isAuthenticated,
+      rawValue: JSON.stringify(userState.isAuthenticated)
+    });
+    
+    // Defensive boolean conversion to prevent string coercion errors
+    if (typeof userState.isAuthenticated === 'string') {
+      console.warn('🚨 STRING DETECTED: Converting to boolean');
+      return userState.isAuthenticated === 'true';
+    }
+    
+    return Boolean(userState.isAuthenticated);
+  }, [userState.isAuthenticated]);
 
   return (
     <NavigationContainer>

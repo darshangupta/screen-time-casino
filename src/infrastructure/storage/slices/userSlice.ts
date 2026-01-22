@@ -60,6 +60,10 @@ const userSlice = createSlice({
         state.profile.subscriptionExpiry = action.payload.subscriptionExpiry;
       }
     },
+    fixTypeCoercion: (state, action: PayloadAction<{ isAuthenticated: boolean }>) => {
+      console.log('🔧 FIXING TYPE COERCION: Converting string to boolean:', action.payload);
+      state.isAuthenticated = action.payload.isAuthenticated;
+    },
   },
 });
 
@@ -70,7 +74,8 @@ export const {
   setGameHistory, 
   updatePreferences, 
   setLoading,
-  updateSubscriptionStatus 
+  updateSubscriptionStatus,
+  fixTypeCoercion 
 } = userSlice.actions;
 
 export default userSlice.reducer;
