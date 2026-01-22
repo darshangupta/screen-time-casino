@@ -6,19 +6,19 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": {
-        "bundleIdentifier": "com.screentimecasino.app.dev"
+      "env": {
+        "NODE_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
-      "ios": {
-        "bundleIdentifier": "com.screentimecasino.app"
+      "env": {
+        "NODE_ENV": "preview"
       }
     },
     "production": {
-      "ios": {
-        "bundleIdentifier": "com.screentimecasino.app"
+      "env": {
+        "NODE_ENV": "production"
       }
     }
   },

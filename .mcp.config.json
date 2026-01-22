@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+      "expo-dev": {
+        "command": "npx",
+        "args": ["-y", "expo-mcp-server"],
+        "env": {
+          "EXPO_TOKEN": "VtFGHQo2zzyGkzgfn6rpjPyUm3uFX4UFfLI50x3y"
+        }
+      }
+    }
+  }

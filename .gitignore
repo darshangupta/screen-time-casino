@@ -9,6 +9,13 @@ dist/
 web-build/
 expo-env.d.ts
 
+# EAS Build
+.eas/
+eas-build-*/
+*.ipa
+*.apk
+*.aab
+
 # Native
 .kotlin/
 *.orig.*
@@ -17,6 +24,8 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.cer
+*.certSigningRequest
 
 # Metro
 .metro-health-check*
@@ -30,7 +39,12 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env*.local
 
 # typescript
@@ -39,3 +53,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Build logs
+*.log
+build-*.tar.gz
+
+# Temporary files
+tmp/
+temp/

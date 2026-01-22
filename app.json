@@ -12,7 +12,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.screentimecasino.app",
@@ -20,7 +22,8 @@
       "requireFullScreen": true,
       "infoPlist": {
         "NSFamilyControlsUsageDescription": "This app uses Screen Time data to manage your daily usage limits through casino games.",
-        "NSUserTrackingUsageDescription": "This app uses data for analytics to improve your casino gaming experience."
+        "NSUserTrackingUsageDescription": "This app uses data for analytics to improve your casino gaming experience.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -37,6 +40,12 @@
     },
     "plugins": [
       "expo-dev-client"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d0644044-7040-436c-ac69-0f20b38847a0"
+      }
+    },
+    "owner": "darshangupt"
   }
 }
