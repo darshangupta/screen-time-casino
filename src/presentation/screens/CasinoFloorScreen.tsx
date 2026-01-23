@@ -223,9 +223,9 @@ const CasinoFloorScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Free Games Section */}
+        {/* All Games Section - TEMPORARILY UNLOCKED FOR TESTING */}
         <View style={styles.gamesSection}>
-          <Text style={styles.sectionTitle}>Free Games</Text>
+          <Text style={styles.sectionTitle}>All Games (Testing Mode)</Text>
           <View style={styles.gamesGrid}>
             {FREE_GAMES.map((gameType) => (
               <GameCard
@@ -234,25 +234,6 @@ const CasinoFloorScreen: React.FC = () => {
                 isPremiumOnly={false}
                 isLocked={false}
                 onPress={() => handleGamePress(gameType)}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Premium Games Section */}
-        <View style={styles.gamesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Premium Games</Text>
-            <Ionicons name="diamond" size={20} color={Colors.gold} />
-          </View>
-          <View style={styles.gamesGrid}>
-            {PAID_GAMES.map((gameType) => (
-              <GameCard
-                key={gameType}
-                gameType={gameType}
-                isPremiumOnly={true}
-                isLocked={!isSubscriber}
-                onPress={() => handlePremiumGamePress(gameType)}
               />
             ))}
           </View>
