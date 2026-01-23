@@ -19,19 +19,19 @@ import { RootState } from '../../../infrastructure/storage/store';
 
 const { width, height } = Dimensions.get('window');
 const BOARD_WIDTH = width - 80; // Smaller board
-const BOARD_HEIGHT = height * 0.4; // Reduced height
+const BOARD_HEIGHT = height * 0.35; // Good board size
 const PEG_SIZE = 8;
 const SLOT_HEIGHT = 50;
 const BALL_SIZE = 12;
 const ROWS = 10; // Reduced from 12 to 10 rows
 const SLOTS = 11; // Match engine's 11 slots
 
-// Simple physics constants like GitHub original
+// Physics constants tuned to match GitHub original feel
 const PHYSICS = {
-  gravity: 0.5,
-  friction: 0.7,
-  restitution: 0.8,
-  randomFactor: 0.05,
+  gravity: 0.8, // Stronger gravity for better movement
+  friction: 0.5,
+  frictionAir: 0.002, // Much lower air resistance
+  restitution: 0.7,
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
 };
@@ -53,11 +53,11 @@ const PlinkoScreen: React.FC = () => {
 
 
   const animateBallDrop = useCallback((enginePath: {row: number; position: number}[], finalSlot: number) => {
-    // Start position
+    // Start position with proper initial velocity
     let posX = BOARD_WIDTH / 2 - BALL_SIZE / 2;
     let posY = 30;
-    let velocityX = 0;
-    let velocityY = 0;
+    let velocityX = (Math.random() - 0.5) * 3; // Moderate horizontal movement
+    let velocityY = 2; // Initial downward velocity
     
     // Reset position
     ballX.setValue(posX);
@@ -85,27 +85,21 @@ const PlinkoScreen: React.FC = () => {
     const slotWidth = BOARD_WIDTH / SLOTS;
     const targetSlotX = finalSlot * slotWidth + (slotWidth / 2) - (BALL_SIZE / 2);
     
-    // Pre-calculate target X positions for each row based on engine path
-    const targetPositions: {x: number; y: number}[] = [];
-    for (let i = 0; i < enginePath.length; i++) {
-      const pathPoint = enginePath[i];
-      const rowY = (pathPoint.row * (BOARD_HEIGHT - 120)) / ROWS + 80;
-      const targetX = BOARD_WIDTH / 2 + (pathPoint.position * 25) - BALL_SIZE / 2;
-      targetPositions.push({ x: targetX, y: rowY });
-    }
+    // Final destination alignment based on engine outcome
+    // (Natural physics will mostly handle the path, with final guidance)
     
-    // Enhanced physics simulation with guaranteed final slot alignment
+    // Simple physics simulation based on GitHub original approach
     const frameRate = 60;
     const frameTime = 1000 / frameRate;
     let frame = 0;
-    let currentPathIndex = 0;
-    const maxFrames = 420; // ~7 seconds at 60fps
+    const maxFrames = 300; // ~5 seconds at 60fps
     
     const simulateFrame = () => {
       // Check if animation should end
       if (frame >= maxFrames || posY > BOARD_HEIGHT - 30) {
         if (posY > BOARD_HEIGHT - 30) {
-          posX = targetSlotX; // Ensure exact alignment
+          // Snap to final slot for alignment
+          posX = targetSlotX;
           posY = BOARD_HEIGHT - 25;
           ballX.setValue(posX);
           ballY.setValue(posY);
@@ -121,93 +115,57 @@ const PlinkoScreen: React.FC = () => {
         }
       }
       
-      // Apply physics forces
+      // Simple physics: gravity and air resistance
       velocityY += PHYSICS.gravity;
-      velocityX *= PHYSICS.velocityDamping;
-      velocityY *= (1 - PHYSICS.airFriction);
+      velocityX *= (1 - PHYSICS.frictionAir);
+      velocityY *= (1 - PHYSICS.frictionAir);
       
-      // Strong path guidance based on engine decisions - this is the key fix
-      const currentRow = Math.floor((posY - 80) / ((BOARD_HEIGHT - 120) / ROWS));
-      if (currentPathIndex < targetPositions.length && currentRow >= currentPathIndex) {
-        const targetPos = targetPositions[currentPathIndex];
-        
-        // Calculate guidance force towards target position
-        const distanceToTarget = targetPos.x - (posX + BALL_SIZE / 2);
-        const guidance = distanceToTarget * 0.015; // Stronger guidance factor
-        
-        // Apply guidance force
+      // Light guidance toward final slot in lower half (to ensure correct outcome)
+      if (posY > BOARD_HEIGHT * 0.6) {
+        const distanceToTarget = targetSlotX - (posX + BALL_SIZE / 2);
+        const guidance = distanceToTarget * 0.002; // Very light guidance
         velocityX += guidance;
-        
-        // Move to next target when we're close or passed the row
-        if (Math.abs(distanceToTarget) < 15 || posY > targetPos.y) {
-          currentPathIndex++;
-        }
-      }
-      
-      // Stronger final guidance in bottom third of board
-      if (posY > BOARD_HEIGHT * 0.7) {
-        const distanceToFinalSlot = targetSlotX - (posX + BALL_SIZE / 2);
-        const finalGuidance = distanceToFinalSlot * 0.025; // Strong final guidance
-        velocityX += finalGuidance;
-      }
-      
-      // Add controlled randomness (reduced when close to target)
-      const randomnessFactor = currentPathIndex < targetPositions.length ? 
-        PHYSICS.randomFactor * 0.5 : PHYSICS.randomFactor * 0.3;
-      velocityX += (Math.random() - 0.5) * randomnessFactor;
-      
-      // Ensure minimum downward velocity
-      if (velocityY < 0.4) {
-        velocityY = Math.max(velocityY, 0.4);
       }
       
       // Update position
       posX += velocityX;
       posY += velocityY;
       
-      // Enhanced collision detection with path-aware bouncing
+      // Simple collision detection with pegs
       for (const peg of pegPositions) {
         const dx = posX + BALL_SIZE/2 - peg.x;
         const dy = posY + BALL_SIZE/2 - peg.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
         
         if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius + 2) {
-          // Calculate collision angle
+          // Simple bounce physics
           const angle = Math.atan2(dy, dx);
+          const speed = Math.sqrt(velocityX*velocityX + velocityY*velocityY) * PHYSICS.restitution;
           
-          // More realistic bounce physics
-          const currentSpeed = Math.sqrt(velocityX*velocityX + velocityY*velocityY);
-          const bounceSpeed = Math.max(currentSpeed * PHYSICS.restitution, PHYSICS.minBounceVelocity);
+          velocityX = Math.cos(angle) * speed;
+          velocityY = Math.sin(angle) * speed;
           
-          // Calculate bounce direction with reduced randomness
-          const randomAngle = (Math.random() - 0.5) * 0.3; // Reduced randomness
-          const bounceAngle = angle + randomAngle;
-          
-          velocityX = Math.cos(bounceAngle) * bounceSpeed;
-          velocityY = Math.sin(bounceAngle) * bounceSpeed;
-          
-          // Ensure bounce maintains some downward momentum
-          if (velocityY < 0.2) {
-            velocityY = Math.max(velocityY, 0.2);
+          // Ensure some downward motion
+          if (velocityY < 0.3) {
+            velocityY = 0.3;
           }
           
-          // Separate ball from peg to prevent sticking
+          // Separate from peg
           const separationDistance = PHYSICS.pegRadius + PHYSICS.ballRadius + 3;
-          const separationAngle = bounceAngle;
-          posX = peg.x + Math.cos(separationAngle) * separationDistance - BALL_SIZE/2;
-          posY = peg.y + Math.sin(separationAngle) * separationDistance - BALL_SIZE/2;
+          posX = peg.x + Math.cos(angle) * separationDistance - BALL_SIZE/2;
+          posY = peg.y + Math.sin(angle) * separationDistance - BALL_SIZE/2;
           
-          break; // Only handle one collision per frame
+          break;
         }
       }
       
-      // Boundary collision with improved bouncing
+      // Boundary collisions
       if (posX < 0) {
         posX = 0;
-        velocityX = Math.abs(velocityX) * PHYSICS.restitution;
+        velocityX = -velocityX * PHYSICS.restitution;
       } else if (posX > BOARD_WIDTH - BALL_SIZE) {
         posX = BOARD_WIDTH - BALL_SIZE;
-        velocityX = -Math.abs(velocityX) * PHYSICS.restitution;
+        velocityX = -velocityX * PHYSICS.restitution;
       }
       
       // Update animated values
@@ -494,7 +452,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm, // Reduced padding
     paddingHorizontal: Spacing.screenHorizontal,
   },
   title: {
@@ -510,7 +468,7 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.screenHorizontal,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm, // Reduced margin
   },
   statCard: {
     flex: 1,
@@ -535,7 +493,7 @@ const styles = StyleSheet.create({
   boardContainer: {
     alignItems: 'center',
     paddingHorizontal: Spacing.screenHorizontal,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.sm, // Reduced margin
   },
   plinkoBoard: {
     width: BOARD_WIDTH,
