@@ -145,7 +145,7 @@ const PaiGowScreen: React.FC = () => {
             <Text style={styles.statValue}>{bet}m</Text>
           </View>
           
-          {lastOutcome && (
+          {lastOutcome && gameState === 'finished' && (
             <View style={styles.statCard}>
               <Text style={styles.statLabel}>Result</Text>
               <Text style={[styles.statValue, { 
