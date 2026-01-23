@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...Typography.label,
-    color: Colors.gold,
+    color: Colors.black,
     textAlign: 'center',
     marginBottom: Spacing.md,
   },
