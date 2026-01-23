@@ -373,8 +373,9 @@ const styles = StyleSheet.create({
   },
   handTitle: {
     ...Typography.caption,
-    color: Colors.secondaryText,
+    color: Colors.black, // Black text for better visibility on grey background
     marginBottom: Spacing.sm,
+    fontWeight: 'bold',
   },
   cardsRow: {
     flexDirection: 'row',
@@ -422,8 +423,9 @@ const styles = StyleSheet.create({
   },
   handRankText: {
     ...Typography.caption,
-    color: Colors.tertiaryText,
+    color: Colors.black, // Black text for better visibility
     textAlign: 'center',
+    fontWeight: 'bold',
   },
   vsContainer: {
     alignItems: 'center',
