@@ -18,25 +18,22 @@ import { setGameOutcome, setLoading } from '../../../infrastructure/storage/slic
 import { RootState } from '../../../infrastructure/storage/store';
 
 const { width, height } = Dimensions.get('window');
-const BOARD_WIDTH = width - 40;
-const BOARD_HEIGHT = height * 0.5;
-const PEG_SIZE = 10;
-const SLOT_HEIGHT = 60;
-const BALL_SIZE = 14;
-const ROWS = 12; // Match engine's 12 rows
+const BOARD_WIDTH = width - 80; // Smaller board
+const BOARD_HEIGHT = height * 0.4; // Reduced height
+const PEG_SIZE = 8;
+const SLOT_HEIGHT = 50;
+const BALL_SIZE = 12;
+const ROWS = 10; // Reduced from 12 to 10 rows
 const SLOTS = 11; // Match engine's 11 slots
 
-// Physics constants - improved bounciness and realism
+// Simple physics constants like GitHub original
 const PHYSICS = {
-  gravity: 0.4,
-  friction: 0.3, // Reduced friction for more bouncing
-  airFriction: 0.01, // Minimal air resistance
-  restitution: 0.8, // Increased bounciness
-  randomFactor: 0.08, // Slight randomness for natural bounce
+  gravity: 0.5,
+  friction: 0.7,
+  restitution: 0.8,
+  randomFactor: 0.05,
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
-  velocityDamping: 0.99, // Minimal damping
-  minBounceVelocity: 0.3, // Minimum velocity after bounce
 };
 
 const PlinkoScreen: React.FC = () => {

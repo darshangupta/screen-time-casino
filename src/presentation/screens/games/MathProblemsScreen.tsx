@@ -120,6 +120,41 @@ const MathProblemsScreen: React.FC = () => {
     setUserAnswers([]);
     setTimeSpent([]);
     setLastOutcome(null);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const getTimeLimit = () => {
+    switch (difficulty) {
+      case 'easy': return 10;
+      case 'medium': return 8;
+      case 'hard': return 5;
+      default: return 10;
+    }
+  };
+
+  const startTimer = () => {
+    const timeLimit = getTimeLimit();
+    setTimeRemaining(timeLimit);
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    
+    timerRef.current = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Time's up - submit wrong answer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+          }
+          setTimeout(() => submitAnswer(-999), 100); // Invalid answer
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const getDifficultyColor = (diff: 'easy' | 'medium' | 'hard') => {
