@@ -84,26 +84,29 @@ const PlinkoScreen: React.FC = () => {
       }
     }
     
-    // Calculate target slot position for final guidance
+    // Calculate target slot position for final destination
     const slotWidth = BOARD_WIDTH / SLOTS;
     const targetSlotX = finalSlot * slotWidth + (slotWidth / 2) - (BALL_SIZE / 2);
     
-    // Enhanced physics simulation with path guidance
+    // Pre-calculate target X positions for each row based on engine path
+    const targetPositions: {x: number; y: number}[] = [];
+    for (let i = 0; i < enginePath.length; i++) {
+      const pathPoint = enginePath[i];
+      const rowY = (pathPoint.row * (BOARD_HEIGHT - 120)) / ROWS + 80;
+      const targetX = BOARD_WIDTH / 2 + (pathPoint.position * 25) - BALL_SIZE / 2;
+      targetPositions.push({ x: targetX, y: rowY });
+    }
+    
+    // Enhanced physics simulation with guaranteed final slot alignment
     const frameRate = 60;
     const frameTime = 1000 / frameRate;
     let frame = 0;
     let currentPathIndex = 0;
-    const maxFrames = 480; // ~8 seconds at 60fps for more realistic physics
+    const maxFrames = 420; // ~7 seconds at 60fps
     
     const simulateFrame = () => {
       // Check if animation should end
       if (frame >= maxFrames || posY > BOARD_HEIGHT - 30) {
-        // Guide ball to final slot position in last few frames
-        const progress = Math.min(1, (posY - (BOARD_HEIGHT - 100)) / 70);
-        if (progress > 0) {
-          posX = posX * (1 - progress) + targetSlotX * progress;
-        }
-        
         if (posY > BOARD_HEIGHT - 30) {
           posX = targetSlotX; // Ensure exact alignment
           posY = BOARD_HEIGHT - 25;
@@ -126,20 +129,35 @@ const PlinkoScreen: React.FC = () => {
       velocityX *= PHYSICS.velocityDamping;
       velocityY *= (1 - PHYSICS.airFriction);
       
-      // Subtle path guidance based on engine decisions
-      if (currentPathIndex < enginePath.length) {
-        const currentRow = Math.floor((posY - 80) / ((BOARD_HEIGHT - 120) / ROWS));
-        if (currentRow >= currentPathIndex && currentRow < ROWS) {
-          const pathPoint = enginePath[currentPathIndex];
-          const targetX = BOARD_WIDTH / 2 + (pathPoint.position * 25) - BALL_SIZE / 2;
-          const guidance = (targetX - (posX + BALL_SIZE / 2)) * 0.002; // Very subtle guidance
-          velocityX += guidance;
+      // Strong path guidance based on engine decisions - this is the key fix
+      const currentRow = Math.floor((posY - 80) / ((BOARD_HEIGHT - 120) / ROWS));
+      if (currentPathIndex < targetPositions.length && currentRow >= currentPathIndex) {
+        const targetPos = targetPositions[currentPathIndex];
+        
+        // Calculate guidance force towards target position
+        const distanceToTarget = targetPos.x - (posX + BALL_SIZE / 2);
+        const guidance = distanceToTarget * 0.015; // Stronger guidance factor
+        
+        // Apply guidance force
+        velocityX += guidance;
+        
+        // Move to next target when we're close or passed the row
+        if (Math.abs(distanceToTarget) < 15 || posY > targetPos.y) {
           currentPathIndex++;
         }
       }
       
-      // Add natural randomness
-      velocityX += (Math.random() - 0.5) * PHYSICS.randomFactor;
+      // Stronger final guidance in bottom third of board
+      if (posY > BOARD_HEIGHT * 0.7) {
+        const distanceToFinalSlot = targetSlotX - (posX + BALL_SIZE / 2);
+        const finalGuidance = distanceToFinalSlot * 0.025; // Strong final guidance
+        velocityX += finalGuidance;
+      }
+      
+      // Add controlled randomness (reduced when close to target)
+      const randomnessFactor = currentPathIndex < targetPositions.length ? 
+        PHYSICS.randomFactor * 0.5 : PHYSICS.randomFactor * 0.3;
+      velocityX += (Math.random() - 0.5) * randomnessFactor;
       
       // Ensure minimum downward velocity
       if (velocityY < 0.4) {
@@ -150,13 +168,13 @@ const PlinkoScreen: React.FC = () => {
       posX += velocityX;
       posY += velocityY;
       
-      // Enhanced collision detection with better bouncing
+      // Enhanced collision detection with path-aware bouncing
       for (const peg of pegPositions) {
         const dx = posX + BALL_SIZE/2 - peg.x;
         const dy = posY + BALL_SIZE/2 - peg.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
         
-        if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius + 2) { // Slightly larger collision area
+        if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius + 2) {
           // Calculate collision angle
           const angle = Math.atan2(dy, dx);
           
@@ -164,15 +182,12 @@ const PlinkoScreen: React.FC = () => {
           const currentSpeed = Math.sqrt(velocityX*velocityX + velocityY*velocityY);
           const bounceSpeed = Math.max(currentSpeed * PHYSICS.restitution, PHYSICS.minBounceVelocity);
           
-          velocityX = Math.cos(angle) * bounceSpeed;
-          velocityY = Math.sin(angle) * bounceSpeed;
+          // Calculate bounce direction with reduced randomness
+          const randomAngle = (Math.random() - 0.5) * 0.3; // Reduced randomness
+          const bounceAngle = angle + randomAngle;
           
-          // Add bounce randomness for natural behavior
-          const randomAngle = (Math.random() - 0.5) * 0.6;
-          const cos = Math.cos(angle + randomAngle);
-          const sin = Math.sin(angle + randomAngle);
-          velocityX = cos * bounceSpeed;
-          velocityY = sin * bounceSpeed;
+          velocityX = Math.cos(bounceAngle) * bounceSpeed;
+          velocityY = Math.sin(bounceAngle) * bounceSpeed;
           
           // Ensure bounce maintains some downward momentum
           if (velocityY < 0.2) {
@@ -181,8 +196,9 @@ const PlinkoScreen: React.FC = () => {
           
           // Separate ball from peg to prevent sticking
           const separationDistance = PHYSICS.pegRadius + PHYSICS.ballRadius + 3;
-          posX = peg.x + cos * separationDistance - BALL_SIZE/2;
-          posY = peg.y + sin * separationDistance - BALL_SIZE/2;
+          const separationAngle = bounceAngle;
+          posX = peg.x + Math.cos(separationAngle) * separationDistance - BALL_SIZE/2;
+          posY = peg.y + Math.sin(separationAngle) * separationDistance - BALL_SIZE/2;
           
           break; // Only handle one collision per frame
         }

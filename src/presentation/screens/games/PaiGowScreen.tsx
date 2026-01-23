@@ -348,15 +348,19 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   dealerSection: {
-    backgroundColor: Colors.modalBackground,
+    backgroundColor: '#6A6A6A', // Light grey background
     borderRadius: Spacing.borderRadius.medium,
     padding: Spacing.md,
     marginBottom: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.error + '60',
   },
   playerSection: {
-    backgroundColor: Colors.modalBackground,
+    backgroundColor: '#7A7A7A', // Slightly lighter grey
     borderRadius: Spacing.borderRadius.medium,
     padding: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.success + '60',
   },
   sectionTitle: {
     ...Typography.label,
