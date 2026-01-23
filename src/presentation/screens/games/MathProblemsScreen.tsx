@@ -65,6 +65,7 @@ const MathProblemsScreen: React.FC = () => {
       setUserAnswers([]);
       setTimeSpent([]);
       setStartTime(Date.now());
+      startTimer(); // Start the first problem timer
 
     } catch (error) {
       Alert.alert('Error', 'Failed to generate problems. Please try again.');
@@ -86,6 +87,7 @@ const MathProblemsScreen: React.FC = () => {
       // Move to next problem
       setCurrentProblemIndex(currentProblemIndex + 1);
       setStartTime(Date.now());
+      startTimer(); // Start timer for next problem
     } else {
       // Game finished - calculate results
       finishGame(newUserAnswers, newTimeSpent);
@@ -228,11 +230,18 @@ const MathProblemsScreen: React.FC = () => {
         {/* Playing Screen */}
         {gameState === 'playing' && currentProblem && (
           <View style={styles.gameArea}>
-            {/* Progress */}
+            {/* Progress and Timer */}
             <View style={styles.progressContainer}>
-              <Text style={styles.progressText}>
-                Problem {currentProblemIndex + 1} of {problems.length}
-              </Text>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressText}>
+                  Problem {currentProblemIndex + 1} of {problems.length}
+                </Text>
+                <View style={[styles.timerContainer, { 
+                  backgroundColor: timeRemaining <= 3 ? Colors.error : timeRemaining <= 5 ? Colors.gold : Colors.success 
+                }]}>
+                  <Text style={styles.timerText}>{timeRemaining}s</Text>
+                </View>
+              </View>
               <View style={styles.progressBar}>
                 <View 
                   style={[
@@ -481,11 +490,28 @@ const styles = StyleSheet.create({
   progressContainer: {
     marginBottom: Spacing.xl,
   },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
   progressText: {
     ...Typography.label,
     color: Colors.secondaryText,
-    textAlign: 'center',
-    marginBottom: Spacing.sm,
+  },
+  timerContainer: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Spacing.borderRadius.large,
+    minWidth: 50,
+    alignItems: 'center',
+  },
+  timerText: {
+    ...Typography.primaryButtonText,
+    color: Colors.black,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   progressBar: {
     height: 6,

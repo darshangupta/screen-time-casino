@@ -19,8 +19,9 @@ const PaiGowScreen: React.FC = () => {
   const dispatch = useDispatch();
   const { isLoading } = useSelector((state: RootState) => state.casino);
   const [bet, setBet] = useState(20);
-  const [gameState, setGameState] = useState<'betting' | 'dealing' | 'finished'>('betting');
+  const [gameState, setGameState] = useState<'betting' | 'dealing' | 'revealing' | 'finished'>('betting');
   const [lastOutcome, setLastOutcome] = useState<any>(null);
+  const [revealedCards, setRevealedCards] = useState<number>(0);
 
   const paiGowEngine = new PaiGowEngine();
 
@@ -45,8 +46,12 @@ const PaiGowScreen: React.FC = () => {
       const outcome = paiGowEngine.play({ bet }, seed);
       
       setLastOutcome(outcome);
-      setGameState('finished');
-      dispatch(setGameOutcome(outcome));
+      setGameState('revealing');
+      setRevealedCards(0);
+      
+      // Start card reveal animation
+      startCardReveal(outcome);
+      
     } catch (error) {
       Alert.alert('Error', 'Failed to deal cards. Please try again.');
       setGameState('betting');
@@ -55,13 +60,37 @@ const PaiGowScreen: React.FC = () => {
     dispatch(setLoading(false));
   };
 
+  const startCardReveal = (outcome: any) => {
+    const totalCards = 14; // 7 player + 7 dealer cards
+    let currentCard = 0;
+    
+    const revealNextCard = () => {
+      if (currentCard < totalCards) {
+        setRevealedCards(currentCard + 1);
+        currentCard++;
+        setTimeout(revealNextCard, 300); // 300ms between each card
+      } else {
+        // All cards revealed, show final result
+        setTimeout(() => {
+          setGameState('finished');
+          dispatch(setGameOutcome(outcome));
+        }, 500);
+      }
+    };
+    
+    setTimeout(revealNextCard, 500); // Start after brief delay
+  };
+
   const resetGame = () => {
     setGameState('betting');
     setLastOutcome(null);
+    setRevealedCards(0);
   };
 
-  const renderCard = (card: Card, index: number, isHidden = false) => {
-    if (isHidden) {
+  const renderCard = (card: Card, index: number, cardPosition: number = 0) => {
+    const shouldReveal = gameState === 'finished' || revealedCards > cardPosition;
+    
+    if (!shouldReveal && (gameState === 'revealing' || gameState === 'dealing')) {
       return (
         <View key={index} style={styles.cardContainer}>
           <View style={styles.hiddenCard}>
@@ -87,12 +116,12 @@ const PaiGowScreen: React.FC = () => {
     );
   };
 
-  const renderHand = (cards: Card[], title: string, isDealer = false, hideCards = false) => {
+  const renderHand = (cards: Card[], title: string, isDealer = false, startPosition = 0) => {
     return (
       <View style={styles.handContainer}>
         <Text style={styles.handTitle}>{title}</Text>
         <View style={styles.cardsRow}>
-          {cards.map((card, index) => renderCard(card, index, hideCards))}
+          {cards.map((card, index) => renderCard(card, index, startPosition + index))}
         </View>
       </View>
     );
@@ -135,13 +164,15 @@ const PaiGowScreen: React.FC = () => {
             {/* Dealer Section */}
             <View style={styles.dealerSection}>
               <Text style={styles.sectionTitle}>DEALER</Text>
-              {renderHand(lastOutcome.display.dealerHighHand, 'High Hand (5 cards)', true)}
-              {renderHand(lastOutcome.display.dealerLowHand, 'Low Hand (2 cards)', true)}
+              {renderHand(lastOutcome.display.dealerHighHand, 'High Hand (5 cards)', true, 0)}
+              {renderHand(lastOutcome.display.dealerLowHand, 'Low Hand (2 cards)', true, 5)}
               
-              <View style={styles.handRanks}>
-                <Text style={styles.handRankText}>High: {lastOutcome.display.dealerHighRank}</Text>
-                <Text style={styles.handRankText}>Low: {lastOutcome.display.dealerLowRank}</Text>
-              </View>
+              {gameState === 'finished' && (
+                <View style={styles.handRanks}>
+                  <Text style={styles.handRankText}>High: {lastOutcome.display.dealerHighRank}</Text>
+                  <Text style={styles.handRankText}>Low: {lastOutcome.display.dealerLowRank}</Text>
+                </View>
+              )}
             </View>
 
             {/* VS Indicator */}
@@ -152,13 +183,15 @@ const PaiGowScreen: React.FC = () => {
             {/* Player Section */}
             <View style={styles.playerSection}>
               <Text style={styles.sectionTitle}>PLAYER</Text>
-              {renderHand(lastOutcome.display.playerHighHand, 'High Hand (5 cards)')}
-              {renderHand(lastOutcome.display.playerLowHand, 'Low Hand (2 cards)')}
+              {renderHand(lastOutcome.display.playerHighHand, 'High Hand (5 cards)', false, 7)}
+              {renderHand(lastOutcome.display.playerLowHand, 'Low Hand (2 cards)', false, 12)}
               
-              <View style={styles.handRanks}>
-                <Text style={styles.handRankText}>High: {lastOutcome.display.playerHighRank}</Text>
-                <Text style={styles.handRankText}>Low: {lastOutcome.display.playerLowRank}</Text>
-              </View>
+              {gameState === 'finished' && (
+                <View style={styles.handRanks}>
+                  <Text style={styles.handRankText}>High: {lastOutcome.display.playerHighRank}</Text>
+                  <Text style={styles.handRankText}>Low: {lastOutcome.display.playerLowRank}</Text>
+                </View>
+              )}
             </View>
           </View>
         )}
@@ -199,6 +232,14 @@ const PaiGowScreen: React.FC = () => {
         {gameState === 'dealing' && (
           <View style={styles.controlsContainer}>
             <Text style={styles.dealingText}>Dealing cards...</Text>
+          </View>
+        )}
+
+        {gameState === 'revealing' && (
+          <View style={styles.controlsContainer}>
+            <Text style={styles.dealingText}>
+              Revealing cards... ({revealedCards}/14)
+            </Text>
           </View>
         )}
 
