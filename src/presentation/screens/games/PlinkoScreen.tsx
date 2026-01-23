@@ -20,20 +20,23 @@ import { RootState } from '../../../infrastructure/storage/store';
 const { width, height } = Dimensions.get('window');
 const BOARD_WIDTH = width - 40;
 const BOARD_HEIGHT = height * 0.5;
-const PEG_SIZE = 8;
+const PEG_SIZE = 10;
 const SLOT_HEIGHT = 60;
-const BALL_SIZE = 12;
+const BALL_SIZE = 14;
+const ROWS = 12; // Match engine's 12 rows
+const SLOTS = 11; // Match engine's 11 slots
 
-// Physics constants from AnsonH/Matter.js analysis
+// Physics constants - improved bounciness and realism
 const PHYSICS = {
-  gravity: 0.35, // Increased to ensure ball reaches bottom
-  friction: 0.5,
-  airFriction: 0.02, // Reduced air resistance
-  restitution: 0.6, // Reduced bounciness for more predictable drop
-  randomFactor: 0.06, // Slightly reduced randomness
+  gravity: 0.4,
+  friction: 0.3, // Reduced friction for more bouncing
+  airFriction: 0.01, // Minimal air resistance
+  restitution: 0.8, // Increased bounciness
+  randomFactor: 0.08, // Slight randomness for natural bounce
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
-  velocityDamping: 0.98, // Less damping to maintain velocity
+  velocityDamping: 0.99, // Minimal damping
+  minBounceVelocity: 0.3, // Minimum velocity after bounce
 };
 
 const PlinkoScreen: React.FC = () => {
@@ -52,8 +55,8 @@ const PlinkoScreen: React.FC = () => {
   const plinkoEngine = new PlinkoEngine();
 
 
-  const animateBallDrop = useCallback((path: {row: number; position: number}[]) => {
-    // Physics simulation variables
+  const animateBallDrop = useCallback((enginePath: {row: number; position: number}[], finalSlot: number) => {
+    // Start position
     let posX = BOARD_WIDTH / 2 - BALL_SIZE / 2;
     let posY = 30;
     let velocityX = 0;
@@ -70,92 +73,128 @@ const PlinkoScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
     
-    // Calculate peg positions for collision detection
-    const pegPositions: {x: number; y: number}[] = [];
-    const rows = 8;
-    for (let row = 0; row < rows; row++) {
-      const pegsInRow = row + 3;
-      const rowY = (row * (BOARD_HEIGHT - 100)) / rows + 60;
+    // Generate peg positions matching engine's 12 rows
+    const pegPositions: {x: number; y: number; row: number; pegIndex: number}[] = [];
+    for (let row = 0; row < ROWS; row++) {
+      const pegsInRow = row + 2; // Start with 2, increase each row (matches engine logic)
+      const rowY = (row * (BOARD_HEIGHT - 120)) / ROWS + 80;
       for (let peg = 0; peg < pegsInRow; peg++) {
-        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 35) / 2 + (peg * 35);
-        pegPositions.push({ x: pegX, y: rowY });
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30);
+        pegPositions.push({ x: pegX, y: rowY, row, pegIndex: peg });
       }
     }
     
-    // Physics simulation with collision detection
+    // Calculate target slot position for final guidance
+    const slotWidth = BOARD_WIDTH / SLOTS;
+    const targetSlotX = finalSlot * slotWidth + (slotWidth / 2) - (BALL_SIZE / 2);
+    
+    // Enhanced physics simulation with path guidance
     const frameRate = 60;
     const frameTime = 1000 / frameRate;
     let frame = 0;
-    const maxFrames = 400; // ~6.5 seconds at 60fps - longer animation
+    let currentPathIndex = 0;
+    const maxFrames = 480; // ~8 seconds at 60fps for more realistic physics
     
     const simulateFrame = () => {
-      // Make sure ball goes all the way to the bottom
-      if (frame >= maxFrames || posY > BOARD_HEIGHT - 20) {
-        // Force ball to bottom if it's close
-        if (posY < BOARD_HEIGHT - 20) {
-          posY = BOARD_HEIGHT - 20;
-          ballY.setValue(posY);
+      // Check if animation should end
+      if (frame >= maxFrames || posY > BOARD_HEIGHT - 30) {
+        // Guide ball to final slot position in last few frames
+        const progress = Math.min(1, (posY - (BOARD_HEIGHT - 100)) / 70);
+        if (progress > 0) {
+          posX = posX * (1 - progress) + targetSlotX * progress;
         }
         
-        Animated.timing(ballOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: false,
-        }).start(() => {
-          setGameState('finished');
-        });
-        return;
+        if (posY > BOARD_HEIGHT - 30) {
+          posX = targetSlotX; // Ensure exact alignment
+          posY = BOARD_HEIGHT - 25;
+          ballX.setValue(posX);
+          ballY.setValue(posY);
+          
+          Animated.timing(ballOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: false,
+          }).start(() => {
+            setGameState('finished');
+          });
+          return;
+        }
       }
       
-      // Apply gravity and air resistance
+      // Apply physics forces
       velocityY += PHYSICS.gravity;
       velocityX *= PHYSICS.velocityDamping;
       velocityY *= (1 - PHYSICS.airFriction);
       
-      // Add random horizontal force
+      // Subtle path guidance based on engine decisions
+      if (currentPathIndex < enginePath.length) {
+        const currentRow = Math.floor((posY - 80) / ((BOARD_HEIGHT - 120) / ROWS));
+        if (currentRow >= currentPathIndex && currentRow < ROWS) {
+          const pathPoint = enginePath[currentPathIndex];
+          const targetX = BOARD_WIDTH / 2 + (pathPoint.position * 25) - BALL_SIZE / 2;
+          const guidance = (targetX - (posX + BALL_SIZE / 2)) * 0.002; // Very subtle guidance
+          velocityX += guidance;
+          currentPathIndex++;
+        }
+      }
+      
+      // Add natural randomness
       velocityX += (Math.random() - 0.5) * PHYSICS.randomFactor;
       
-      // Ensure minimum downward velocity to reach bottom
-      if (velocityY < 0.5) {
-        velocityY = Math.max(velocityY, 0.5);
+      // Ensure minimum downward velocity
+      if (velocityY < 0.4) {
+        velocityY = Math.max(velocityY, 0.4);
       }
       
       // Update position
       posX += velocityX;
       posY += velocityY;
       
-      // Check collision with pegs
+      // Enhanced collision detection with better bouncing
       for (const peg of pegPositions) {
         const dx = posX + BALL_SIZE/2 - peg.x;
         const dy = posY + BALL_SIZE/2 - peg.y;
         const distance = Math.sqrt(dx*dx + dy*dy);
         
-        if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius) {
-          // Collision detected - calculate bounce
+        if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius + 2) { // Slightly larger collision area
+          // Calculate collision angle
           const angle = Math.atan2(dy, dx);
           
-          // Apply restitution (bounciness)
-          const speed = Math.sqrt(velocityX*velocityX + velocityY*velocityY) * PHYSICS.restitution;
-          velocityX = Math.cos(angle) * speed;
-          velocityY = Math.sin(angle) * speed;
+          // More realistic bounce physics
+          const currentSpeed = Math.sqrt(velocityX*velocityX + velocityY*velocityY);
+          const bounceSpeed = Math.max(currentSpeed * PHYSICS.restitution, PHYSICS.minBounceVelocity);
           
-          // Add some randomness to the bounce
-          velocityX += (Math.random() - 0.5) * 0.5;
+          velocityX = Math.cos(angle) * bounceSpeed;
+          velocityY = Math.sin(angle) * bounceSpeed;
           
-          // Separate ball from peg
-          const separationDistance = PHYSICS.pegRadius + PHYSICS.ballRadius;
-          posX = peg.x + Math.cos(angle) * separationDistance - BALL_SIZE/2;
-          posY = peg.y + Math.sin(angle) * separationDistance - BALL_SIZE/2;
+          // Add bounce randomness for natural behavior
+          const randomAngle = (Math.random() - 0.5) * 0.6;
+          const cos = Math.cos(angle + randomAngle);
+          const sin = Math.sin(angle + randomAngle);
+          velocityX = cos * bounceSpeed;
+          velocityY = sin * bounceSpeed;
+          
+          // Ensure bounce maintains some downward momentum
+          if (velocityY < 0.2) {
+            velocityY = Math.max(velocityY, 0.2);
+          }
+          
+          // Separate ball from peg to prevent sticking
+          const separationDistance = PHYSICS.pegRadius + PHYSICS.ballRadius + 3;
+          posX = peg.x + cos * separationDistance - BALL_SIZE/2;
+          posY = peg.y + sin * separationDistance - BALL_SIZE/2;
+          
+          break; // Only handle one collision per frame
         }
       }
       
-      // Keep ball within bounds
+      // Boundary collision with improved bouncing
       if (posX < 0) {
         posX = 0;
-        velocityX = Math.abs(velocityX) * 0.5;
+        velocityX = Math.abs(velocityX) * PHYSICS.restitution;
       } else if (posX > BOARD_WIDTH - BALL_SIZE) {
         posX = BOARD_WIDTH - BALL_SIZE;
-        velocityX = -Math.abs(velocityX) * 0.5;
+        velocityX = -Math.abs(velocityX) * PHYSICS.restitution;
       }
       
       // Update animated values
@@ -194,8 +233,8 @@ const PlinkoScreen: React.FC = () => {
       setLastOutcome(outcome);
       setChipPath(outcome.display.chipPosition);
       
-      // Start physics animation
-      animateBallDrop(outcome.display.chipPosition);
+      // Start physics animation with final slot guidance
+      animateBallDrop(outcome.display.chipPosition, outcome.display.finalSlot);
       
       // Dispatch outcome when animation completes (handled in animateBallDrop callback)
       setTimeout(() => {
@@ -221,15 +260,14 @@ const PlinkoScreen: React.FC = () => {
 
   const renderPlinkoBoard = () => {
     const pegs: React.ReactElement[] = [];
-    const rows = 8; // Reduced further to remove bottom row crowding
     
-    // Generate pegs in triangular pattern
-    for (let row = 0; row < rows; row++) {
-      const pegsInRow = row + 3; // Start with 3 pegs, increase each row
-      const rowY = (row * (BOARD_HEIGHT - 100)) / rows + 60; // Leave more space at bottom
+    // Generate pegs matching engine's 12 rows
+    for (let row = 0; row < ROWS; row++) {
+      const pegsInRow = row + 2; // Start with 2 pegs, increase each row (matches engine logic)
+      const rowY = (row * (BOARD_HEIGHT - 120)) / ROWS + 80; // Better spacing for 12 rows
       
       for (let peg = 0; peg < pegsInRow; peg++) {
-        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 35) / 2 + (peg * 35); // Even more spacing
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30); // Tighter spacing for more pegs
         
         pegs.push(
           <View
@@ -267,9 +305,9 @@ const PlinkoScreen: React.FC = () => {
   };
 
   const renderMultiplierSlots = () => {
-    const multipliers = [0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.3, 0.1];
+    const multipliers = [0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.3, 0.1]; // Match engine's multipliers exactly
     return multipliers.map((multiplier, index) => {
-      const slotWidth = BOARD_WIDTH / multipliers.length;
+      const slotWidth = BOARD_WIDTH / SLOTS;
       const isWinningSlot = lastOutcome?.display.finalSlot === index && gameState === 'finished';
       
       return (
@@ -280,10 +318,19 @@ const PlinkoScreen: React.FC = () => {
             {
               width: slotWidth,
               backgroundColor: isWinningSlot ? Colors.gold : getSlotColor(multiplier),
+              borderColor: isWinningSlot ? Colors.gold : Colors.gray,
+              borderWidth: isWinningSlot ? 3 : 1,
             },
           ]}
         >
-          <Text style={[styles.multiplierText, isWinningSlot && { color: Colors.black }]}>
+          <Text style={[
+            styles.multiplierText, 
+            isWinningSlot && { 
+              color: Colors.black,
+              fontWeight: 'bold',
+              fontSize: 14,
+            }
+          ]}>
             {multiplier}x
           </Text>
         </View>
@@ -492,6 +539,11 @@ const styles = StyleSheet.create({
     height: PEG_SIZE,
     borderRadius: PEG_SIZE / 2,
     backgroundColor: Colors.plinko.primary,
+    shadowColor: Colors.plinko.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 4,
   },
   multiplierRow: {
     flexDirection: 'row',

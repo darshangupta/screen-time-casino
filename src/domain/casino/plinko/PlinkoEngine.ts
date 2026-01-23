@@ -121,12 +121,13 @@ export class PlinkoEngine implements GameEngine<PlinkoInput, PlinkoDisplay> {
 
   private generateChipPositions(path: number[]): { row: number; position: number }[] {
     const positions: { row: number; position: number }[] = [];
-    let currentPosition = 0; // Start at center
+    let currentPosition = 0; // Start at center (position 0)
     
     positions.push({ row: 0, position: currentPosition });
     
     for (let row = 0; row < path.length; row++) {
       const direction = path[row];
+      // Move left (-1) or right (+1) based on direction
       currentPosition += direction === 0 ? -1 : 1;
       positions.push({ row: row + 1, position: currentPosition });
     }

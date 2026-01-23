@@ -142,164 +142,102 @@ export class MathChallengeEngine implements GameEngine<MathChallengeInput, MathC
   }
 
   private generateProblem(difficulty: 'easy' | 'medium' | 'hard', random: SeededRandom, id: string): MathProblem {
-    let question: string;
-    let answer: number;
+    let problemData: { question: string; answer: number };
     let timeLimit: number;
 
     switch (difficulty) {
       case 'easy':
-        answer = this.generateEasyProblem(random);
-        timeLimit = 30;
+        problemData = this.generateEasyProblem(random);
+        timeLimit = 10; // Updated time limits
         break;
       case 'medium':
-        answer = this.generateMediumProblem(random);
-        timeLimit = 45;
+        problemData = this.generateMediumProblem(random);
+        timeLimit = 8;
         break;
       case 'hard':
-        answer = this.generateHardProblem(random);
-        timeLimit = 60;
+        problemData = this.generateHardProblem(random);
+        timeLimit = 5;
         break;
+      default:
+        problemData = { question: 'Error', answer: 0 };
+        timeLimit = 10;
     }
 
-    // Extract question from the generated problem
-    question = this.getQuestionFromAnswer(answer, difficulty, random);
-
     // Generate multiple choice options
-    const options = this.generateOptions(answer, random);
+    const options = this.generateOptions(problemData.answer, random);
 
     return {
       id,
-      question,
-      answer,
+      question: problemData.question,
+      answer: problemData.answer,
       options,
       difficulty,
       timeLimit,
     };
   }
 
-  private generateEasyProblem(random: SeededRandom): number {
-    const operations = ['+', '-', '*'];
+  private generateEasyProblem(random: SeededRandom): { question: string; answer: number } {
+    const operations = ['+', '-'];
     const operation = operations[random.nextInt(0, operations.length - 1)];
     
-    let a: number, b: number, answer: number;
+    let a: number, b: number, c: number, answer: number, question: string;
     
-    switch (operation) {
-      case '+':
-        a = random.nextInt(1, 50);
-        b = random.nextInt(1, 50);
-        answer = a + b;
-        break;
-      case '-':
-        a = random.nextInt(10, 100);
-        b = random.nextInt(1, a);
-        answer = a - b;
-        break;
-      case '*':
-        a = random.nextInt(2, 12);
-        b = random.nextInt(2, 12);
-        answer = a * b;
-        break;
-      default:
-        answer = 0;
+    if (operation === '+') {
+      // Three number addition: a + b + c
+      a = random.nextInt(10, 50);
+      b = random.nextInt(10, 50);
+      c = random.nextInt(10, 50);
+      answer = a + b + c;
+      question = `${a} + ${b} + ${c} = ?`;
+    } else {
+      // Three number subtraction: a - b - c
+      c = random.nextInt(5, 20);
+      b = random.nextInt(10, 30);
+      a = random.nextInt(b + c + 10, b + c + 80); // Ensure positive result
+      answer = a - b - c;
+      question = `${a} - ${b} - ${c} = ?`;
     }
 
-    return answer;
+    return { question, answer };
   }
 
-  private generateMediumProblem(random: SeededRandom): number {
-    const problemTypes = ['arithmetic', 'fractions', 'percentages'];
-    const type = problemTypes[random.nextInt(0, problemTypes.length - 1)];
+  private generateMediumProblem(random: SeededRandom): { question: string; answer: number } {
+    const operations = ['*', '/'];
+    const operation = operations[random.nextInt(0, operations.length - 1)];
     
-    switch (type) {
-      case 'arithmetic':
-        // Two-step problems
-        const a = random.nextInt(10, 50);
-        const b = random.nextInt(5, 20);
-        const c = random.nextInt(2, 10);
-        return (a + b) * c;
-        
-      case 'fractions':
-        // Simple fraction to decimal
-        const numerator = random.nextInt(1, 9);
-        const denominator = random.nextInt(2, 10);
-        return Math.round((numerator / denominator) * 100) / 100;
-        
-      case 'percentages':
-        // Percentage of a number
-        const base = random.nextInt(20, 200);
-        const percent = random.nextInt(10, 90);
-        return Math.round((base * percent) / 100);
-        
-      default:
-        return 0;
-    }
-  }
-
-  private generateHardProblem(random: SeededRandom): number {
-    const problemTypes = ['algebra', 'geometry', 'complex'];
-    const type = problemTypes[random.nextInt(0, problemTypes.length - 1)];
+    let a: number, b: number, answer: number, question: string;
     
-    switch (type) {
-      case 'algebra':
-        // Simple quadratic: x^2 + bx + c = 0, find x
-        const b = random.nextInt(-10, 10);
-        const c = random.nextInt(-20, 20);
-        // Return discriminant for now (simplified)
-        return b * b - 4 * c;
-        
-      case 'geometry':
-        // Area of shapes
-        const radius = random.nextInt(3, 15);
-        return Math.round(Math.PI * radius * radius);
-        
-      case 'complex':
-        // Multi-step arithmetic
-        const x = random.nextInt(5, 25);
-        const y = random.nextInt(3, 15);
-        const z = random.nextInt(2, 8);
-        return Math.round((x * y) / z + (x - y) * 2);
-        
-      default:
-        return 0;
+    if (operation === '*') {
+      // Two-digit multiplication
+      a = random.nextInt(12, 25);
+      b = random.nextInt(11, 20);
+      answer = a * b;
+      question = `${a} × ${b} = ?`;
+    } else {
+      // Division with whole number results
+      b = random.nextInt(6, 15);
+      const quotient = random.nextInt(8, 25);
+      a = b * quotient; // Ensure clean division
+      answer = quotient;
+      question = `${a} ÷ ${b} = ?`;
     }
+
+    return { question, answer };
   }
 
+  private generateHardProblem(random: SeededRandom): { question: string; answer: number } {
+    // Exponent problems
+    const base = random.nextInt(2, 9);
+    const exponent = random.nextInt(2, 4); // Keep exponents reasonable
+    const answer = Math.pow(base, exponent);
+    const question = `${base}^${exponent} = ?`;
+
+    return { question, answer };
+  }
+
+  // No longer needed - questions are generated with problems
   private getQuestionFromAnswer(answer: number, difficulty: 'easy' | 'medium' | 'hard', random: SeededRandom): string {
-    // This is a simplified approach - in a real implementation, we'd store the question during generation
-    switch (difficulty) {
-      case 'easy':
-        if (answer < 100) {
-          const a = random.nextInt(1, 50);
-          const b = answer - a;
-          return `${a} + ${b} = ?`;
-        } else {
-          const a = random.nextInt(2, 12);
-          const b = Math.round(answer / a);
-          return `${a} × ${b} = ?`;
-        }
-      
-      case 'medium':
-        if (answer < 1) {
-          return `Convert 1/2 to decimal = ?`;
-        } else if (answer < 100) {
-          return `25% of ${answer * 4} = ?`;
-        } else {
-          return `(20 + 30) × ${Math.round(answer / 50)} = ?`;
-        }
-      
-      case 'hard':
-        if (answer > 1000) {
-          return `What is b² - 4ac if b=5, a=1, c=-10?`;
-        } else if (answer > 100) {
-          const r = Math.round(Math.sqrt(answer / Math.PI));
-          return `Area of circle with radius ${r} = ?`;
-        } else {
-          return `(15 × 6) ÷ 3 + (15 - 6) × 2 = ?`;
-        }
-      
-      default:
-        return 'Unknown problem';
-    }
+    return 'Generated with problem';
   }
 
   private generateOptions(correctAnswer: number, random: SeededRandom): number[] {
