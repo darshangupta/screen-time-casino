@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   dealerSection: {
-    backgroundColor: '#6A6A6A', // Light grey background
+    backgroundColor: '#D0D0D0', // Much lighter grey background
     borderRadius: Spacing.borderRadius.medium,
     padding: Spacing.md,
     marginBottom: Spacing.md,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.error + '60',
   },
   playerSection: {
-    backgroundColor: '#7A7A7A', // Slightly lighter grey
+    backgroundColor: '#E0E0E0', // Even lighter grey
     borderRadius: Spacing.borderRadius.medium,
     padding: Spacing.md,
     borderWidth: 2,
@@ -386,30 +386,30 @@ const styles = StyleSheet.create({
     margin: 2,
   },
   playingCard: {
-    width: 40,
-    height: 56,
+    width: 50,
+    height: 70,
     backgroundColor: Colors.white,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.gray,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.black,
     justifyContent: 'center',
     alignItems: 'center',
   },
   cardRank: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: 'bold',
   },
   cardSuit: {
-    fontSize: 14,
+    fontSize: 16,
     marginTop: -2,
   },
   hiddenCard: {
-    width: 40,
-    height: 56,
+    width: 50,
+    height: 70,
     backgroundColor: Colors.cardBackground,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.gray,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: Colors.black,
     justifyContent: 'center',
     alignItems: 'center',
   },
