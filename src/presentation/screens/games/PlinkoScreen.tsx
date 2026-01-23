@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,16 @@ const BOARD_WIDTH = width - 40;
 const BOARD_HEIGHT = height * 0.5;
 const PEG_SIZE = 8;
 const SLOT_HEIGHT = 60;
+const BALL_SIZE = 12;
+
+// Physics constants from Plinksy analysis
+const PHYSICS = {
+  gravity: 0.15,
+  bounceDamping: 0.7,
+  randomFactor: 0.02,
+  pegRadius: PEG_SIZE / 2,
+  ballRadius: BALL_SIZE / 2,
+};
 
 const PlinkoScreen: React.FC = () => {
   const dispatch = useDispatch();
@@ -29,9 +39,75 @@ const PlinkoScreen: React.FC = () => {
   const [bet, setBet] = useState(20);
   const [gameState, setGameState] = useState<'betting' | 'dropping' | 'finished'>('betting');
   const [lastOutcome, setLastOutcome] = useState<any>(null);
-  const [animationProgress] = useState(new Animated.Value(0));
+  const [chipPath, setChipPath] = useState<{row: number; position: number}[]>([]);
+  
+  // Animated ball position
+  const ballX = useRef(new Animated.Value(BOARD_WIDTH / 2)).current;
+  const ballY = useRef(new Animated.Value(20)).current;
+  const ballOpacity = useRef(new Animated.Value(0)).current;
 
   const plinkoEngine = new PlinkoEngine();
+
+
+  const animateBallDrop = useCallback((path: {row: number; position: number}[]) => {
+    // Reset position
+    ballX.setValue(BOARD_WIDTH / 2 - BALL_SIZE / 2);
+    ballY.setValue(30);
+    
+    // Show ball
+    Animated.timing(ballOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+    
+    // Much slower, more realistic drop animation
+    const duration = 6000; // Doubled from 3000ms to 6000ms
+    const steps = 40; // More steps for smoother animation
+    
+    const animateStep = (step: number) => {
+      if (step >= steps) {
+        Animated.timing(ballOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: false,
+        }).start(() => {
+          setGameState('finished');
+        });
+        return;
+      }
+      
+      const progress = step / steps;
+      const randomOffset = (Math.random() - 0.5) * 60 * progress;
+      
+      const targetX = Math.max(0, Math.min(
+        BOARD_WIDTH - BALL_SIZE,
+        BOARD_WIDTH / 2 + randomOffset - BALL_SIZE / 2
+      ));
+      
+      // Slower, more gradual fall with physics curve
+      const targetY = 30 + (BOARD_HEIGHT - 80) * Math.pow(progress, 1.5);
+      
+      Animated.parallel([
+        Animated.timing(ballX, {
+          toValue: targetX,
+          duration: duration / steps,
+          useNativeDriver: false,
+        }),
+        Animated.timing(ballY, {
+          toValue: targetY,
+          duration: duration / steps,
+          useNativeDriver: false,
+        })
+      ]).start(() => {
+        // Continue to next step
+        setTimeout(() => animateStep(step + 1), 50); // Small delay between steps
+      });
+    };
+    
+    // Start animation after opacity fade in
+    setTimeout(() => animateStep(0), 300);
+  }, [ballX, ballY, ballOpacity]);
 
   const adjustBet = (amount: number) => {
     if (gameState !== 'betting') return;
@@ -53,17 +129,17 @@ const PlinkoScreen: React.FC = () => {
       const seed = Date.now();
       const outcome = plinkoEngine.play({ bet }, seed);
       
-      // Animate chip drop
-      animationProgress.setValue(0);
-      Animated.timing(animationProgress, {
-        toValue: 1,
-        duration: 3000, // 3 second drop animation
-        useNativeDriver: false,
-      }).start(() => {
-        setLastOutcome(outcome);
-        setGameState('finished');
+      // Store outcome for when animation completes
+      setLastOutcome(outcome);
+      setChipPath(outcome.display.chipPosition);
+      
+      // Start physics animation
+      animateBallDrop(outcome.display.chipPosition);
+      
+      // Dispatch outcome when animation completes (handled in animateBallDrop callback)
+      setTimeout(() => {
         dispatch(setGameOutcome(outcome));
-      });
+      }, 3000);
 
     } catch (error) {
       Alert.alert('Error', 'Failed to drop chip. Please try again.');
@@ -76,20 +152,23 @@ const PlinkoScreen: React.FC = () => {
   const resetGame = () => {
     setGameState('betting');
     setLastOutcome(null);
-    animationProgress.setValue(0);
+    setChipPath([]);
+    ballOpacity.setValue(0);
+    ballX.stopAnimation();
+    ballY.stopAnimation();
   };
 
   const renderPlinkoBoard = () => {
     const pegs: React.ReactElement[] = [];
-    const rows = 12;
+    const rows = 10; // Reduced from 12 to remove crowding
     
     // Generate pegs in triangular pattern
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 3; // Start with 3 pegs, increase each row
-      const rowY = (row * BOARD_HEIGHT) / rows + 50;
+      const rowY = (row * BOARD_HEIGHT) / rows + 60; // More spacing from top
       
       for (let peg = 0; peg < pegsInRow; peg++) {
-        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 25) / 2 + (peg * 25);
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30); // More spacing between pegs
         
         pegs.push(
           <View
@@ -107,6 +186,23 @@ const PlinkoScreen: React.FC = () => {
     }
 
     return pegs;
+  };
+
+  const renderAnimatedBall = () => {
+    return (
+      <Animated.View
+        style={[
+          styles.animatedBall,
+          {
+            transform: [
+              { translateX: ballX },
+              { translateY: ballY },
+            ],
+            opacity: ballOpacity,
+          },
+        ]}
+      />
+    );
   };
 
   const renderMultiplierSlots = () => {
@@ -178,6 +274,7 @@ const PlinkoScreen: React.FC = () => {
         <View style={styles.boardContainer}>
           <View style={styles.plinkoBoard}>
             {renderPlinkoBoard()}
+            {renderAnimatedBall()}
           </View>
           
           {/* Multiplier Slots */}
@@ -348,9 +445,10 @@ const styles = StyleSheet.create({
     borderColor: Colors.gray,
   },
   multiplierText: {
-    ...Typography.bodyMedium,
+    ...Typography.caption, // Smaller font size
     color: Colors.primaryText,
     fontWeight: 'bold',
+    fontSize: 12, // Even smaller than caption
   },
   controlsContainer: {
     paddingHorizontal: Spacing.screenHorizontal,
@@ -449,6 +547,19 @@ const styles = StyleSheet.create({
     color: Colors.tertiaryText,
     textAlign: 'center',
     marginBottom: Spacing.xs,
+  },
+  animatedBall: {
+    position: 'absolute',
+    width: BALL_SIZE,
+    height: BALL_SIZE,
+    borderRadius: BALL_SIZE / 2,
+    backgroundColor: Colors.gold,
+    shadowColor: Colors.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 8,
+    zIndex: 10,
   },
 });
 

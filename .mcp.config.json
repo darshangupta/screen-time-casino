@@ -6,6 +6,11 @@
         "env": {
           "EXPO_TOKEN": "VtFGHQo2zzyGkzgfn6rpjPyUm3uFX4UFfLI50x3y"
         }
+      },
+        "github": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp/"
+        }
       }
     }
-  }
+  
