@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  ScrollView,
   TouchableOpacity,
   Dimensions,
   StatusBar,
@@ -199,12 +200,16 @@ const JewelMiningScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.darkBackground} />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>GEM MINING</Text>
-        <Text style={styles.subtitle}>Find gems, avoid bombs!</Text>
-      </View>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>GEM MINING</Text>
+          <Text style={styles.subtitle}>Find gems, avoid bombs!</Text>
+        </View>
 
       {/* Game Stats */}
       <View style={styles.statsContainer}>
@@ -334,6 +339,7 @@ const JewelMiningScreen: React.FC = () => {
           • 4 bombs hidden in 16 tiles • Each gem = 20% of bet • Cash out anytime
         </Text>
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -342,6 +348,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.darkBackground,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: Spacing.xxl,
   },
   header: {
     alignItems: 'center',
