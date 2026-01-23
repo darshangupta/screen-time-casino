@@ -24,13 +24,16 @@ const PEG_SIZE = 8;
 const SLOT_HEIGHT = 60;
 const BALL_SIZE = 12;
 
-// Physics constants from Plinksy analysis
+// Physics constants from AnsonH/Matter.js analysis
 const PHYSICS = {
-  gravity: 0.15,
-  bounceDamping: 0.7,
-  randomFactor: 0.02,
+  gravity: 0.25, // Increased for more realistic fall
+  friction: 0.5,
+  airFriction: 0.04, // Air resistance
+  restitution: 0.8, // Bounciness (0-1)
+  randomFactor: 0.08, // Increased randomness for better spread
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
+  velocityDamping: 0.95, // Velocity decay over time
 };
 
 const PlinkoScreen: React.FC = () => {
@@ -50,9 +53,15 @@ const PlinkoScreen: React.FC = () => {
 
 
   const animateBallDrop = useCallback((path: {row: number; position: number}[]) => {
+    // Physics simulation variables
+    let posX = BOARD_WIDTH / 2 - BALL_SIZE / 2;
+    let posY = 30;
+    let velocityX = 0;
+    let velocityY = 0;
+    
     // Reset position
-    ballX.setValue(BOARD_WIDTH / 2 - BALL_SIZE / 2);
-    ballY.setValue(30);
+    ballX.setValue(posX);
+    ballY.setValue(posY);
     
     // Show ball
     Animated.timing(ballOpacity, {
@@ -61,12 +70,26 @@ const PlinkoScreen: React.FC = () => {
       useNativeDriver: false,
     }).start();
     
-    // Much slower, more realistic drop animation
-    const duration = 6000; // Doubled from 3000ms to 6000ms
-    const steps = 40; // More steps for smoother animation
+    // Calculate peg positions for collision detection
+    const pegPositions: {x: number; y: number}[] = [];
+    const rows = 10;
+    for (let row = 0; row < rows; row++) {
+      const pegsInRow = row + 3;
+      const rowY = (row * BOARD_HEIGHT) / rows + 60;
+      for (let peg = 0; peg < pegsInRow; peg++) {
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30);
+        pegPositions.push({ x: pegX, y: rowY });
+      }
+    }
     
-    const animateStep = (step: number) => {
-      if (step >= steps) {
+    // Physics simulation with collision detection
+    const frameRate = 60;
+    const frameTime = 1000 / frameRate;
+    let frame = 0;
+    const maxFrames = 300; // ~5 seconds at 60fps
+    
+    const simulateFrame = () => {
+      if (frame >= maxFrames || posY > BOARD_HEIGHT - 60) {
         Animated.timing(ballOpacity, {
           toValue: 0,
           duration: 400,
@@ -77,36 +100,62 @@ const PlinkoScreen: React.FC = () => {
         return;
       }
       
-      const progress = step / steps;
-      const randomOffset = (Math.random() - 0.5) * 60 * progress;
+      // Apply gravity and air resistance
+      velocityY += PHYSICS.gravity;
+      velocityX *= PHYSICS.velocityDamping;
+      velocityY *= (1 - PHYSICS.airFriction);
       
-      const targetX = Math.max(0, Math.min(
-        BOARD_WIDTH - BALL_SIZE,
-        BOARD_WIDTH / 2 + randomOffset - BALL_SIZE / 2
-      ));
+      // Add random horizontal force
+      velocityX += (Math.random() - 0.5) * PHYSICS.randomFactor;
       
-      // Slower, more gradual fall with physics curve
-      const targetY = 30 + (BOARD_HEIGHT - 80) * Math.pow(progress, 1.5);
+      // Update position
+      posX += velocityX;
+      posY += velocityY;
       
-      Animated.parallel([
-        Animated.timing(ballX, {
-          toValue: targetX,
-          duration: duration / steps,
-          useNativeDriver: false,
-        }),
-        Animated.timing(ballY, {
-          toValue: targetY,
-          duration: duration / steps,
-          useNativeDriver: false,
-        })
-      ]).start(() => {
-        // Continue to next step
-        setTimeout(() => animateStep(step + 1), 50); // Small delay between steps
-      });
+      // Check collision with pegs
+      for (const peg of pegPositions) {
+        const dx = posX + BALL_SIZE/2 - peg.x;
+        const dy = posY + BALL_SIZE/2 - peg.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        
+        if (distance < PHYSICS.pegRadius + PHYSICS.ballRadius) {
+          // Collision detected - calculate bounce
+          const angle = Math.atan2(dy, dx);
+          
+          // Apply restitution (bounciness)
+          const speed = Math.sqrt(velocityX*velocityX + velocityY*velocityY) * PHYSICS.restitution;
+          velocityX = Math.cos(angle) * speed;
+          velocityY = Math.sin(angle) * speed;
+          
+          // Add some randomness to the bounce
+          velocityX += (Math.random() - 0.5) * 0.5;
+          
+          // Separate ball from peg
+          const separationDistance = PHYSICS.pegRadius + PHYSICS.ballRadius;
+          posX = peg.x + Math.cos(angle) * separationDistance - BALL_SIZE/2;
+          posY = peg.y + Math.sin(angle) * separationDistance - BALL_SIZE/2;
+        }
+      }
+      
+      // Keep ball within bounds
+      if (posX < 0) {
+        posX = 0;
+        velocityX = Math.abs(velocityX) * 0.5;
+      } else if (posX > BOARD_WIDTH - BALL_SIZE) {
+        posX = BOARD_WIDTH - BALL_SIZE;
+        velocityX = -Math.abs(velocityX) * 0.5;
+      }
+      
+      // Update animated values
+      ballX.setValue(posX);
+      ballY.setValue(posY);
+      
+      frame++;
+      setTimeout(simulateFrame, frameTime);
     };
     
-    // Start animation after opacity fade in
-    setTimeout(() => animateStep(0), 300);
+    // Start simulation after ball appears
+    setTimeout(simulateFrame, 300);
   }, [ballX, ballY, ballOpacity]);
 
   const adjustBet = (amount: number) => {
