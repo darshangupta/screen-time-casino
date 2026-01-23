@@ -52,7 +52,7 @@ class SeededRandom {
 }
 
 export class PaiGowEngine implements GameEngine<PaiGowInput, PaiGowDisplay> {
-  config = GAME_CONFIG.paiGow;
+  config = GAME_CONFIG['pai-gow'];
 
   private readonly suits: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
   private readonly ranks: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];

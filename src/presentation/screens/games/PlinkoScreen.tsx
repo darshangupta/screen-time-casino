@@ -26,14 +26,14 @@ const BALL_SIZE = 12;
 
 // Physics constants from AnsonH/Matter.js analysis
 const PHYSICS = {
-  gravity: 0.25, // Increased for more realistic fall
+  gravity: 0.35, // Increased to ensure ball reaches bottom
   friction: 0.5,
-  airFriction: 0.04, // Air resistance
-  restitution: 0.8, // Bounciness (0-1)
-  randomFactor: 0.08, // Increased randomness for better spread
+  airFriction: 0.02, // Reduced air resistance
+  restitution: 0.6, // Reduced bounciness for more predictable drop
+  randomFactor: 0.06, // Slightly reduced randomness
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
-  velocityDamping: 0.95, // Velocity decay over time
+  velocityDamping: 0.98, // Less damping to maintain velocity
 };
 
 const PlinkoScreen: React.FC = () => {
@@ -72,12 +72,12 @@ const PlinkoScreen: React.FC = () => {
     
     // Calculate peg positions for collision detection
     const pegPositions: {x: number; y: number}[] = [];
-    const rows = 10;
+    const rows = 8;
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 3;
-      const rowY = (row * BOARD_HEIGHT) / rows + 60;
+      const rowY = (row * (BOARD_HEIGHT - 100)) / rows + 60;
       for (let peg = 0; peg < pegsInRow; peg++) {
-        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30);
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 35) / 2 + (peg * 35);
         pegPositions.push({ x: pegX, y: rowY });
       }
     }
@@ -86,10 +86,17 @@ const PlinkoScreen: React.FC = () => {
     const frameRate = 60;
     const frameTime = 1000 / frameRate;
     let frame = 0;
-    const maxFrames = 300; // ~5 seconds at 60fps
+    const maxFrames = 400; // ~6.5 seconds at 60fps - longer animation
     
     const simulateFrame = () => {
-      if (frame >= maxFrames || posY > BOARD_HEIGHT - 60) {
+      // Make sure ball goes all the way to the bottom
+      if (frame >= maxFrames || posY > BOARD_HEIGHT - 20) {
+        // Force ball to bottom if it's close
+        if (posY < BOARD_HEIGHT - 20) {
+          posY = BOARD_HEIGHT - 20;
+          ballY.setValue(posY);
+        }
+        
         Animated.timing(ballOpacity, {
           toValue: 0,
           duration: 400,
@@ -107,6 +114,11 @@ const PlinkoScreen: React.FC = () => {
       
       // Add random horizontal force
       velocityX += (Math.random() - 0.5) * PHYSICS.randomFactor;
+      
+      // Ensure minimum downward velocity to reach bottom
+      if (velocityY < 0.5) {
+        velocityY = Math.max(velocityY, 0.5);
+      }
       
       // Update position
       posX += velocityX;
@@ -209,15 +221,15 @@ const PlinkoScreen: React.FC = () => {
 
   const renderPlinkoBoard = () => {
     const pegs: React.ReactElement[] = [];
-    const rows = 10; // Reduced from 12 to remove crowding
+    const rows = 8; // Reduced further to remove bottom row crowding
     
     // Generate pegs in triangular pattern
     for (let row = 0; row < rows; row++) {
       const pegsInRow = row + 3; // Start with 3 pegs, increase each row
-      const rowY = (row * BOARD_HEIGHT) / rows + 60; // More spacing from top
+      const rowY = (row * (BOARD_HEIGHT - 100)) / rows + 60; // Leave more space at bottom
       
       for (let peg = 0; peg < pegsInRow; peg++) {
-        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 30) / 2 + (peg * 30); // More spacing between pegs
+        const pegX = (BOARD_WIDTH / 2) - ((pegsInRow - 1) * 35) / 2 + (peg * 35); // Even more spacing
         
         pegs.push(
           <View

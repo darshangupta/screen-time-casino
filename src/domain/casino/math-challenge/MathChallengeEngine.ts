@@ -51,7 +51,7 @@ class SeededRandom {
 }
 
 export class MathChallengeEngine implements GameEngine<MathChallengeInput, MathChallengeDisplay> {
-  config = GAME_CONFIG.mathProblems;
+  config = GAME_CONFIG['math-problems'];
 
   validateInput(input: MathChallengeInput): boolean {
     return (
