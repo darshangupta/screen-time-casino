@@ -80,8 +80,8 @@ const PlinkoScreen: React.FC = () => {
   };
 
   const renderPlinkoBoard = () => {
-    const pegs: JSX.Element[] = [];
-    const rows = plinkoEngine.config.pegs;
+    const pegs: React.ReactElement[] = [];
+    const rows = 12;
     
     // Generate pegs in triangular pattern
     for (let row = 0; row < rows; row++) {
@@ -110,8 +110,9 @@ const PlinkoScreen: React.FC = () => {
   };
 
   const renderMultiplierSlots = () => {
-    return plinkoEngine.config.multipliers.map((multiplier, index) => {
-      const slotWidth = BOARD_WIDTH / plinkoEngine.config.multipliers.length;
+    const multipliers = [0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.3, 0.1];
+    return multipliers.map((multiplier, index) => {
+      const slotWidth = BOARD_WIDTH / multipliers.length;
       const isWinningSlot = lastOutcome?.display.finalSlot === index && gameState === 'finished';
       
       return (

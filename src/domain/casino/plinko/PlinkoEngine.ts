@@ -3,41 +3,57 @@
  * Drop chips down a pegboard to hit multiplier slots at the bottom
  */
 
-import { GameEngine, GameOutcome, GameConfig, SeededRandom } from '../types';
+import { GameEngine, GameOutcome } from '../../../shared/types';
+import { GAME_CONFIG } from '../../../shared/constants/games';
 
-export interface PlinkoConfig extends GameConfig {
-  pegs: number; // Number of peg rows
-  multipliers: number[]; // Multiplier values for each slot
+// Simple seeded random number generator
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next(): number {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+    return this.seed / 233280;
+  }
 }
 
-export interface PlinkoOutcome extends GameOutcome {
-  display: {
-    path: number[]; // Path the chip took (left/right decisions)
-    finalSlot: number; // Which slot chip landed in
-    multiplier: number; // Multiplier value of final slot
-    chipPosition: { row: number; position: number }[]; // Full path coordinates
-  };
+interface PlinkoInput {
+  bet: number;
 }
 
-export class PlinkoEngine implements GameEngine<PlinkoConfig, PlinkoOutcome> {
-  readonly config: PlinkoConfig = {
-    winProbability: 0.35,
-    lossProbability: 0.65,
-    minScreenTimeDelta: 10,
-    maxScreenTimeDelta: 80,
-    dailyCap: 150,
-    pegs: 12, // 12 rows of pegs
-    multipliers: [0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.3, 0.1], // 11 slots
-  };
+interface PlinkoDisplay {
+  path: number[]; // Path the chip took (left/right decisions)
+  finalSlot: number; // Which slot chip landed in
+  multiplier: number; // Multiplier value of final slot
+  chipPosition: { row: number; position: number }[]; // Full path coordinates
+}
 
-  play(bet: { bet: number }, seed: number): PlinkoOutcome {
+export class PlinkoEngine implements GameEngine<PlinkoInput, PlinkoDisplay> {
+  config = GAME_CONFIG.plinko;
+
+  private readonly pegs = 12; // 12 rows of pegs
+  private readonly multipliers = [0.1, 0.3, 0.5, 1.0, 1.5, 2.0, 1.5, 1.0, 0.5, 0.3, 0.1]; // 11 slots
+
+  validateInput(input: PlinkoInput): boolean {
+    return (
+      input.bet >= this.config.minScreenTimeDelta &&
+      input.bet <= this.config.maxScreenTimeDelta &&
+      typeof input.bet === 'number' &&
+      !isNaN(input.bet)
+    );
+  }
+
+  play(input: PlinkoInput, seed: number): GameOutcome & { display: PlinkoDisplay } {
     const random = new SeededRandom(seed);
-    const { bet: betAmount } = bet;
+    const { bet: betAmount } = input;
 
     // Generate chip path through pegs
     const path = this.generateChipPath(random);
     const finalSlot = this.calculateFinalSlot(path);
-    const multiplier = this.config.multipliers[finalSlot];
+    const multiplier = this.multipliers[finalSlot];
     
     // Calculate payout
     const rawPayout = betAmount * multiplier;
@@ -60,6 +76,12 @@ export class PlinkoEngine implements GameEngine<PlinkoConfig, PlinkoOutcome> {
     return {
       result,
       screenTimeDelta,
+      displayData: {
+        path,
+        finalSlot,
+        multiplier,
+        chipPosition,
+      },
       display: {
         path,
         finalSlot,
@@ -73,7 +95,7 @@ export class PlinkoEngine implements GameEngine<PlinkoConfig, PlinkoOutcome> {
     const path: number[] = [];
     
     // Each row, chip can go left (0) or right (1)
-    for (let row = 0; row < this.config.pegs; row++) {
+    for (let row = 0; row < this.pegs; row++) {
       path.push(random.next() < 0.5 ? 0 : 1);
     }
     
@@ -90,11 +112,11 @@ export class PlinkoEngine implements GameEngine<PlinkoConfig, PlinkoOutcome> {
     }
     
     // Convert to slot index (0 to multipliers.length-1)
-    const centerSlot = Math.floor(this.config.multipliers.length / 2);
+    const centerSlot = Math.floor(this.multipliers.length / 2);
     const slot = centerSlot + position;
     
     // Clamp to valid range
-    return Math.max(0, Math.min(this.config.multipliers.length - 1, slot));
+    return Math.max(0, Math.min(this.multipliers.length - 1, slot));
   }
 
   private generateChipPositions(path: number[]): { row: number; position: number }[] {
