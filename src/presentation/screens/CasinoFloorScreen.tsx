@@ -16,6 +16,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootState } from '../../infrastructure/storage/store';
 import { Colors, Typography, Spacing } from '../../shared/theme';
 import { FREE_GAMES, PAID_GAMES, DAILY_SPINS_FREE, DAILY_SPINS_PREMIUM, GAME_CONFIG } from '../../shared/constants/games';
+import { CONFIG } from '../../shared/config/environment';
 import { GameType } from '../../shared/types';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -122,19 +123,27 @@ const CasinoFloorScreen: React.FC = () => {
   const [selectedBet] = useState(15); // Default bet amount in minutes
   
   const isSubscriber = profile?.isSubscribed || isSubscribed;
-  const spinsRemaining = isSubscriber 
-    ? DAILY_SPINS_PREMIUM - dailyStats.totalSpinsUsed
-    : DAILY_SPINS_FREE - dailyStats.totalSpinsUsed;
   
-  const canPlay = spinsRemaining > 0;
+  // Use environment configuration for spins
+  const maxSpins = CONFIG.unlimitedSpins 
+    ? 999 
+    : (isSubscriber ? CONFIG.dailySpinsPremium : CONFIG.dailySpinsFree);
+  
+  const spinsRemaining = CONFIG.unlimitedSpins 
+    ? 999 
+    : maxSpins - dailyStats.totalSpinsUsed;
+  
+  const canPlay = CONFIG.unlimitedSpins || spinsRemaining > 0;
 
   const handleGamePress = (gameType: GameType) => {
     if (!canPlay) {
       Alert.alert(
         'No Spins Remaining',
-        isSubscriber 
-          ? 'You\'ve used all your spins for today. Come back tomorrow!'
-          : 'Upgrade to Premium for more daily spins!'
+        CONFIG.unlimitedSpins 
+          ? 'Error: Should have unlimited spins in dev mode'
+          : isSubscriber 
+            ? 'You\'ve used all your spins for today. Come back tomorrow!'
+            : 'Upgrade to Premium for more daily spins!'
       );
       return;
     }
@@ -198,8 +207,12 @@ const CasinoFloorScreen: React.FC = () => {
           
           <View style={styles.statCard}>
             <Ionicons name="refresh-outline" size={24} color={Colors.gold} />
-            <Text style={styles.statValue}>{spinsRemaining}</Text>
-            <Text style={styles.statLabel}>Spins Left</Text>
+            <Text style={styles.statValue}>
+              {CONFIG.unlimitedSpins ? '∞' : spinsRemaining}
+            </Text>
+            <Text style={styles.statLabel}>
+              {CONFIG.unlimitedSpins ? 'Dev Mode' : 'Spins Left'}
+            </Text>
           </View>
           
           <View style={styles.statCard}>
