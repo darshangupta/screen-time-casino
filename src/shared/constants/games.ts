@@ -1,7 +1,11 @@
 import { GameType } from '../types';
 
-export const FREE_GAMES: GameType[] = ['slots', 'blackjack', 'roulette'];
-export const PAID_GAMES: GameType[] = ['plinko', 'pai-gow', 'math-problems', 'jewel-mining'];
+// TEMPORARILY UNLOCK ALL GAMES FOR TESTING
+export const FREE_GAMES: GameType[] = ['slots', 'blackjack', 'roulette', 'plinko', 'pai-gow', 'math-problems', 'jewel-mining'];
+export const PAID_GAMES: GameType[] = [];
+// TODO: Restore original game distribution after testing:
+// export const FREE_GAMES: GameType[] = ['slots', 'blackjack', 'roulette'];
+// export const PAID_GAMES: GameType[] = ['plinko', 'pai-gow', 'math-problems', 'jewel-mining'];
 
 export const DAILY_SPINS_FREE = 3;
 export const DAILY_SPINS_PREMIUM = 10;

@@ -146,8 +146,10 @@ const SlotsScreen: React.FC = () => {
           ))}
         </View>
         
-        {/* Payline indicator */}
-        <View style={styles.payline} />
+        {/* Payline indicator - only show during spins or recent wins */}
+        {(isSpinning || payoutMessage) && (
+          <View style={[styles.payline, { opacity: isSpinning ? 1 : 0.6 }]} />
+        )}
       </Animated.View>
 
       {/* Payout Display */}
