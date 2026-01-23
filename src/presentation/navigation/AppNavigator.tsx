@@ -44,6 +44,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 function MainTabs() {
+  // Simple subscription state - no defensive programming
   const { isSubscribed } = useSelector((state: RootState) => state.subscription);
 
   return (
@@ -98,24 +99,8 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  // Defensive selector with type checking and debugging
-  const userState = useSelector((state: RootState) => state.user);
-  const isAuthenticated = useMemo(() => {
-    console.log('🔍 SELECTOR DEBUG:', {
-      userState: userState,
-      isAuthenticated: userState.isAuthenticated,
-      type: typeof userState.isAuthenticated,
-      rawValue: JSON.stringify(userState.isAuthenticated)
-    });
-    
-    // Defensive boolean conversion to prevent string coercion errors
-    if (typeof userState.isAuthenticated === 'string') {
-      console.warn('🚨 STRING DETECTED: Converting to boolean');
-      return userState.isAuthenticated === 'true';
-    }
-    
-    return Boolean(userState.isAuthenticated);
-  }, [userState.isAuthenticated]);
+  // SIMPLIFIED: Direct to Main tabs for testing
+  console.log('🎰 APP NAVIGATOR: Starting simplified navigation');
 
   return (
     <NavigationContainer>
@@ -128,66 +113,57 @@ export default function AppNavigator() {
           cardStyle: { backgroundColor: '#000000' },
         }}
       >
-        {!isAuthenticated ? (
+        {/* Main tab navigation */}
+        <Stack.Screen 
+          name="Main" 
+          component={MainTabs}
+          options={{ headerShown: false }}
+        />
+            
+        {/* Game Screens as Modals */}
+        <Stack.Group screenOptions={{ presentation: 'modal' }}>
           <Stack.Screen 
-            name="Auth" 
-            component={LandingScreen}
-            options={{ headerShown: false }}
+            name="Slots" 
+            component={SlotsScreen}
+            options={{ title: 'Slot Machine' }}
           />
-        ) : (
-          <>
-            <Stack.Screen 
-              name="Main" 
-              component={MainTabs}
-              options={{ headerShown: false }}
-            />
-            
-            {/* Game Screens as Modals */}
-            <Stack.Group screenOptions={{ presentation: 'modal' }}>
-              <Stack.Screen 
-                name="Slots" 
-                component={SlotsScreen}
-                options={{ title: 'Slot Machine' }}
-              />
-              <Stack.Screen 
-                name="Blackjack" 
-                component={BlackjackScreen}
-                options={{ title: 'Blackjack' }}
-              />
-              <Stack.Screen 
-                name="Roulette" 
-                component={RouletteScreen}
-                options={{ title: 'Roulette' }}
-              />
-              <Stack.Screen 
-                name="Plinko" 
-                component={PlinkoScreen}
-                options={{ title: 'Plinko' }}
-              />
-              <Stack.Screen 
-                name="PaiGow" 
-                component={PaiGowScreen}
-                options={{ title: 'Pai Gow Poker' }}
-              />
-              <Stack.Screen 
-                name="MathProblems" 
-                component={MathProblemsScreen}
-                options={{ title: 'Math Challenge' }}
-              />
-              <Stack.Screen 
-                name="JewelMining" 
-                component={JewelMiningScreen}
-                options={{ title: 'Jewel Mining' }}
-              />
-            </Stack.Group>
-            
-            <Stack.Screen 
-              name="Subscription" 
-              component={SubscriptionScreen}
-              options={{ title: 'Premium Subscription' }}
-            />
-          </>
-        )}
+          <Stack.Screen 
+            name="Blackjack" 
+            component={BlackjackScreen}
+            options={{ title: 'Blackjack' }}
+          />
+          <Stack.Screen 
+            name="Roulette" 
+            component={RouletteScreen}
+            options={{ title: 'Roulette' }}
+          />
+          <Stack.Screen 
+            name="Plinko" 
+            component={PlinkoScreen}
+            options={{ title: 'Plinko' }}
+          />
+          <Stack.Screen 
+            name="PaiGow" 
+            component={PaiGowScreen}
+            options={{ title: 'Pai Gow Poker' }}
+          />
+          <Stack.Screen 
+            name="MathProblems" 
+            component={MathProblemsScreen}
+            options={{ title: 'Math Challenge' }}
+          />
+          <Stack.Screen 
+            name="JewelMining" 
+            component={JewelMiningScreen}
+            options={{ title: 'Jewel Mining' }}
+          />
+        </Stack.Group>
+        
+        <Stack.Screen 
+          name="Subscription" 
+          component={SubscriptionScreen}
+          options={{ title: 'Premium Subscription' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -88,6 +88,10 @@ const casinoSlice = createSlice({
         pushCount: 0,
       };
     },
+    fixTypeCoercion: (state, action: PayloadAction<Partial<CasinoState>>) => {
+      // Fix boolean fields that may have been coerced to strings by Redux DevTools
+      Object.assign(state, action.payload);
+    },
   },
 });
 
@@ -96,7 +100,8 @@ export const {
   endGame, 
   setGameOutcome, 
   setLoading, 
-  resetDailyStats 
+  resetDailyStats,
+  fixTypeCoercion
 } = casinoSlice.actions;
 
 export default casinoSlice.reducer;

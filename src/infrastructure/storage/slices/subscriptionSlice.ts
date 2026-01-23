@@ -46,6 +46,10 @@ const subscriptionSlice = createSlice({
       state.isInGracePeriod = false;
       state.isTrialing = false;
     },
+    fixTypeCoercion: (state, action: PayloadAction<Partial<SubscriptionState>>) => {
+      // Fix boolean fields that may have been coerced to strings by Redux DevTools
+      Object.assign(state, action.payload);
+    },
   },
 });
 
@@ -53,7 +57,8 @@ export const {
   setSubscriptionStatus, 
   setOfferings, 
   setLoading, 
-  clearSubscription 
+  clearSubscription,
+  fixTypeCoercion
 } = subscriptionSlice.actions;
 
 export default subscriptionSlice.reducer;
