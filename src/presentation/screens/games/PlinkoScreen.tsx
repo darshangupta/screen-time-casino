@@ -28,10 +28,10 @@ const SLOTS = 11; // Match engine's 11 slots
 
 // Physics constants tuned to match GitHub original feel
 const PHYSICS = {
-  gravity: 0.8, // Stronger gravity for better movement
+  gravity: 0.5, // Slower gravity for more controlled movement
   friction: 0.5,
   frictionAir: 0.002, // Much lower air resistance
-  restitution: 0.7,
+  restitution: 0.6, // Less bouncy
   pegRadius: PEG_SIZE / 2,
   ballRadius: BALL_SIZE / 2,
 };
@@ -57,7 +57,7 @@ const PlinkoScreen: React.FC = () => {
     let posX = BOARD_WIDTH / 2 - BALL_SIZE / 2;
     let posY = 30;
     let velocityX = (Math.random() - 0.5) * 3; // Moderate horizontal movement
-    let velocityY = 2; // Initial downward velocity
+    let velocityY = 1.2; // Slower initial downward velocity
     
     // Reset position
     ballX.setValue(posX);
@@ -120,11 +120,18 @@ const PlinkoScreen: React.FC = () => {
       velocityX *= (1 - PHYSICS.frictionAir);
       velocityY *= (1 - PHYSICS.frictionAir);
       
-      // Light guidance toward final slot in lower half (to ensure correct outcome)
-      if (posY > BOARD_HEIGHT * 0.6) {
+      // Strong guidance toward final slot to ensure exact match
+      if (posY > BOARD_HEIGHT * 0.5) {
         const distanceToTarget = targetSlotX - (posX + BALL_SIZE / 2);
-        const guidance = distanceToTarget * 0.002; // Very light guidance
+        const guidance = distanceToTarget * 0.01; // Stronger guidance for accuracy
         velocityX += guidance;
+      }
+      
+      // Very strong final alignment in bottom 20%
+      if (posY > BOARD_HEIGHT * 0.8) {
+        const distanceToTarget = targetSlotX - (posX + BALL_SIZE / 2);
+        const finalGuidance = distanceToTarget * 0.05; // Strong final correction
+        velocityX += finalGuidance;
       }
       
       // Update position
@@ -351,14 +358,16 @@ const PlinkoScreen: React.FC = () => {
 
         {/* Plinko Board */}
         <View style={styles.boardContainer}>
-          <View style={styles.plinkoBoard}>
-            {renderPlinkoBoard()}
-            {renderAnimatedBall()}
-          </View>
-          
-          {/* Multiplier Slots */}
-          <View style={styles.multiplierRow}>
-            {renderMultiplierSlots()}
+          <View style={styles.integratedBoard}>
+            <View style={styles.plinkoBoard}>
+              {renderPlinkoBoard()}
+              {renderAnimatedBall()}
+            </View>
+            
+            {/* Multiplier Slots - now integrated */}
+            <View style={styles.multiplierRow}>
+              {renderMultiplierSlots()}
+            </View>
           </View>
         </View>
 
@@ -495,14 +504,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.screenHorizontal,
     marginBottom: Spacing.sm, // Reduced margin
   },
-  plinkoBoard: {
-    width: BOARD_WIDTH,
-    height: BOARD_HEIGHT,
-    position: 'relative',
+  integratedBoard: {
     backgroundColor: Colors.modalBackground,
     borderRadius: Spacing.borderRadius.large,
     borderWidth: 2,
     borderColor: Colors.plinko.secondary,
+    overflow: 'hidden', // Ensures clean edges
+  },
+  plinkoBoard: {
+    width: BOARD_WIDTH,
+    height: BOARD_HEIGHT,
+    position: 'relative',
   },
   peg: {
     position: 'absolute',
@@ -519,14 +531,15 @@ const styles = StyleSheet.create({
   multiplierRow: {
     flexDirection: 'row',
     width: BOARD_WIDTH,
-    marginTop: Spacing.sm,
+    backgroundColor: Colors.modalBackground,
   },
   multiplierSlot: {
     height: SLOT_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.gray,
+    borderTopWidth: 2, // Top border to separate from game area
+    borderRightWidth: 1, // Right border between slots
+    borderColor: Colors.plinko.secondary,
   },
   multiplierText: {
     ...Typography.caption, // Smaller font size
